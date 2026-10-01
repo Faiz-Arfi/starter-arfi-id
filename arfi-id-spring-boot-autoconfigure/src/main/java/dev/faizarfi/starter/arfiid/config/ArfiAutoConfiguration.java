@@ -1,6 +1,7 @@
 package dev.faizarfi.starter.arfiid.config;
 
 import dev.faizarfi.starter.arfiid.controller.ArfiAuthController;
+import dev.faizarfi.starter.arfiid.exception.ArfiExceptionHandler;
 import dev.faizarfi.starter.arfiid.security.JwtCookieAuthenticationFilter;
 import dev.faizarfi.starter.arfiid.service.ArfiAuthServiceClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -36,4 +37,11 @@ public class ArfiAutoConfiguration {
     public ArfiAuthController arfiAuthController(ArfiAuthServiceClient authServiceClient, ArfiProperties properties) {
         return new ArfiAuthController(authServiceClient, properties);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ArfiExceptionHandler arfiExceptionHandler() {
+        return new ArfiExceptionHandler();
+    }
+
 }
