@@ -6,7 +6,7 @@
 
     <groupId>dev.faizarfi</groupId>
     <artifactId>starter-arfi-id-parent</artifactId>
-    <version>1.0.1</version>
+    <version>1.2.0</version>
     <packaging>pom</packaging>
 
     <name>Arfi ID Starter Parent</name>
