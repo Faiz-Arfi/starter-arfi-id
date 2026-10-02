@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -83,7 +84,17 @@ public class ArfiAuthController {
         }
 
         String email = authentication.getName();
-        String role = authentication.getAuthorities().iterator().next().getAuthority();
+        String authority = authentication.getAuthorities().
+        stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .orElse("ROLE_USER");
+
+        // remove the ROLE_ Prefix that is provided by Spring security context
+        String role = authority.startsWith("ROLE_")
+                ? authority.substring(5)
+                : authority;
+
         UserDto user = UserDto.builder()
                 .role(role)
                 .email(email)
