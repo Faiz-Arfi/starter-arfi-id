@@ -31,6 +31,13 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
     private final ArfiProperties properties;
 
     @Override
+    protected  boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        // Exclude the /arfiid/callback and /arfiid/refresh endpoints from filtering
+        return path.equals("/arfiid/callback") || path.equals("/arfiid/refresh");
+    }
+
+    @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -89,8 +96,7 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) return null;
 
-        String targetCookieName = properties.getCookiePrefix() + "accessToken";
-
+        String targetCookieName = properties.getCookie().getPrefix() + properties.getCookie().getAccessToken();
         return Arrays.stream(cookies)
                 .filter(cookie -> targetCookieName.equals(cookie.getName()))
                 .findFirst()
