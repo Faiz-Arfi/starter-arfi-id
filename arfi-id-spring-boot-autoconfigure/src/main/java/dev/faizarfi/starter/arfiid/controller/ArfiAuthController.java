@@ -45,10 +45,8 @@ public class ArfiAuthController {
         String refreshToken = arfiTokenResponse.getRefreshToken();
 
         // Set App A's HttpOnly Cookies for local session management
-        String prefix = properties.getCookiePrefix();
-        ResponseCookie accessCookie = generateCookie(prefix + "accessToken", accessToken, 300);
-
-        ResponseCookie refreshCookie = generateCookie(prefix + "refreshToken", refreshToken, 604800);
+        ResponseCookie accessCookie = generateCookie(CookieType.ACCESS_COOKIE,  accessToken);
+        ResponseCookie refreshCookie = generateCookie(CookieType.REFRESH_COOKIE,  refreshToken);
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
@@ -62,15 +60,15 @@ public class ArfiAuthController {
     @PostMapping("/refresh")
     public ResponseEntity<?> handleRefresh(HttpServletRequest request) {
 
-        String prefix = properties.getCookiePrefix();
-        String refreshToken = extractCookieValue(request, prefix + "refreshToken");
+        String refreshToken = extractCookieValue(request, CookieType.REFRESH_COOKIE);
+
         if (refreshToken == null) {
             log.debug("Refresh token not found in cookies for request to /arfiid/refresh");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.fail(null, "Refresh Token not found", "/arfiid/refresh", HttpStatus.UNAUTHORIZED.value()));
         }
 
         AuthResponse arfiTokenResponse = authServiceClient.refreshAccessToken(refreshToken);
-        ResponseCookie accessCookie = generateCookie(prefix + "accessToken", arfiTokenResponse.getAccessToken(), 300);
+        ResponseCookie accessCookie = generateCookie(CookieType.ACCESS_COOKIE,  arfiTokenResponse.getAccessToken());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
@@ -106,8 +104,8 @@ public class ArfiAuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logOutUser(HttpServletRequest request, HttpServletResponse response) {
-        String prefix = properties.getCookiePrefix();
-        String refreshToken = extractCookieValue(request, prefix + "refreshToken");
+
+        String refreshToken = extractCookieValue(request, CookieType.REFRESH_COOKIE);
         if (refreshToken != null) {
             try {
                 authServiceClient.revokeSessionAtArfiId(refreshToken);
@@ -116,8 +114,8 @@ public class ArfiAuthController {
             }
         }
 
-        ResponseCookie clearAccess = generateCookie(prefix + "accessToken", "", 0);
-        ResponseCookie clearRefresh = generateCookie(prefix + "refreshToken", "", 0);
+        ResponseCookie clearAccess = generateCookie(CookieType.CLEAR_ACCESS_COOKIE, "");
+        ResponseCookie clearRefresh = generateCookie(CookieType.CLEAR_REFRESH_COOKIE, "");
 
         response.addHeader(HttpHeaders.SET_COOKIE, clearAccess.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, clearRefresh.toString());
@@ -125,8 +123,15 @@ public class ArfiAuthController {
         return ResponseEntity.ok(ApiResponse.success(null, "Logout successful", "/arfiid/logout", HttpStatus.OK.value()));
     }
 
-    private String extractCookieValue(HttpServletRequest request, String cookieName) {
+    private String extractCookieValue(HttpServletRequest request, CookieType type) {
+
         Cookie[] cookies = request.getCookies();
+
+        String cookieName = switch (type) {
+            case ACCESS_COOKIE, CLEAR_ACCESS_COOKIE -> properties.getCookie().getPrefix() + properties.getCookie().getAccessToken();
+            case REFRESH_COOKIE, CLEAR_REFRESH_COOKIE -> properties.getCookie().getPrefix() + properties.getCookie().getRefreshToken();
+        };
+
         if (cookies == null) return null;
         return Arrays.stream(cookies)
                 .filter(c -> cookieName.equals(c.getName()))
@@ -135,13 +140,32 @@ public class ArfiAuthController {
                 .orElse(null);
     }
 
-    private ResponseCookie generateCookie(String name, String value, int maxAge) {
-        return ResponseCookie.from(name, value)
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
+    private ResponseCookie generateCookie(CookieType type, String value) {
+
+        String cookieName = switch (type) {
+            case ACCESS_COOKIE, CLEAR_ACCESS_COOKIE -> properties.getCookie().getPrefix() + properties.getCookie().getAccessToken();
+            case REFRESH_COOKIE, CLEAR_REFRESH_COOKIE -> properties.getCookie().getPrefix() + properties.getCookie().getRefreshToken();
+        };
+
+        int maxAge = switch (type) {
+            case ACCESS_COOKIE -> properties.getCookie().getAccessCookieMaxAge();
+            case REFRESH_COOKIE -> properties.getCookie().getRefreshCookieMaxAge();
+            default -> 0;
+        };
+
+
+        return ResponseCookie.from(cookieName, value)
+                .httpOnly(properties.getCookie().isHttpOnly())
+                .secure(properties.getCookie().isSecure())
+                .path(properties.getCookie().getPath())
+                .domain(properties.getCookie().getDomain())
                 .maxAge(maxAge)
-                .sameSite("Lax")
+                .sameSite(properties.getCookie().getSameSite())
                 .build();
     }
+
+    enum CookieType {
+        ACCESS_COOKIE, REFRESH_COOKIE, CLEAR_ACCESS_COOKIE, CLEAR_REFRESH_COOKIE
+    }
+
 }

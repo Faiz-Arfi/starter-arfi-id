@@ -28,5 +28,27 @@ public class ArfiProperties {
     @NotBlank(message = "Arfi ID redirect URI is mandatory for OAuth callback handling")
     private String redirectUri;
 
-    private String cookiePrefix = "km_";
+    private CookieProperties cookie = new CookieProperties();
+
+    @Data
+    public static class CookieProperties {
+
+        private String prefix = "pf_";
+        private String accessToken = "access_token";
+        private String refreshToken = "refresh_token";
+        private boolean httpOnly = true;
+        private boolean secure = false;
+        private String path = "/";
+        /**
+         * Cookie Domain - Null Means Current Host
+         */
+        private String domain;
+        private String sameSite = "Lax";
+        /**
+         * How Long the cookies can live in the browser after they have been created.
+         */
+        private int accessCookieMaxAge = 86400; // 1 day
+        private int refreshCookieMaxAge = 604800; // 7 days
+
+    }
 }
